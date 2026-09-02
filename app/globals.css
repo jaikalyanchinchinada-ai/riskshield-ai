@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+  body {
+    @apply bg-canvas text-slate-900 antialiased;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-canvas-panel border border-canvas-border rounded-xl shadow-card;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+  .risk-badge-LOW {
+    @apply bg-risk-lowBg text-risk-low;
+  }
+  .risk-badge-MEDIUM {
+    @apply bg-risk-mediumBg text-risk-medium;
+  }
+  .risk-badge-HIGH {
+    @apply bg-risk-highBg text-risk-high;
+  }
+  .risk-badge-CRITICAL {
+    @apply bg-risk-criticalBg text-risk-critical;
+  }
+}
+
+/* Custom scrollbar for a slightly more "product" feel */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }

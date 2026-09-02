@@ -1,0 +1,220 @@
+// RiskShield AI - Database Schema
+// Synthetic / demo data only. No real customer or payment data.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// USERS (analysts who use the platform)
+// ---------------------------------------------------------------------------
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String // bcrypt-hashed, never stored or returned as plain text
+  role      String   @default("analyst") // analyst | senior_analyst | admin
+  createdAt DateTime @default(now())
+
+  assignedCases Case[]     @relation("AssignedAnalyst")
+  caseNotes     CaseNote[]
+  auditLogs     AuditLog[]
+}
+
+// ---------------------------------------------------------------------------
+// CUSTOMERS (synthetic end-users of the payment platform)
+// ---------------------------------------------------------------------------
+model Customer {
+  id              String   @id @default(cuid())
+  customerRef     String   @unique // human-readable e.g. CUST-1042
+  name            String
+  accountAgeDays  Int
+  homeLocation    String
+  homeDeviceId    String?
+  createdAt       DateTime @default(now())
+
+  transactions Transaction[]
+  devices      Device[]
+
+  @@index([customerRef])
+}
+
+// ---------------------------------------------------------------------------
+// DEVICES seen for a customer
+// ---------------------------------------------------------------------------
+model Device {
+  id         String   @id @default(cuid())
+  deviceRef  String   @unique // e.g. DEV-88231
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  firstSeen  DateTime @default(now())
+  deviceType String   @default("mobile") // mobile | desktop | tablet | pos
+
+  transactions Transaction[]
+
+  @@index([customerId])
+}
+
+// ---------------------------------------------------------------------------
+// TRANSACTIONS
+// ---------------------------------------------------------------------------
+model Transaction {
+  id                    String   @id @default(cuid())
+  transactionRef        String   @unique // e.g. TXN-100045
+  customerId            String
+  customer              Customer @relation(fields: [customerId], references: [id])
+  merchantId            String
+  merchantName          String
+  amount                Float
+  currency              String   @default("INR")
+  paymentMethod         String // card | upi | netbanking | wallet
+  timestamp             DateTime @default(now())
+
+  deviceId       String?
+  device         Device? @relation(fields: [deviceId], references: [id])
+  deviceRefUsed  String // denormalized for easy display even if device record is minimal
+  location       String
+  ipRegion       String
+
+  // Behavioral / velocity features captured at time of transaction
+  accountAgeDays          Int
+  failedAttempts          Int
+  transactionsLast10Min   Int
+  transactionsLast24h     Int
+  historicalAvgAmount     Float
+  deviceAgeDays           Int
+  isNewDevice             Boolean
+  isNewLocation           Boolean
+  previousLocation        String?
+  previousDevice          String?
+
+  // Ground-truth synthetic label used only for dataset generation / evaluation
+  riskLabel String @default("normal") // normal | suspicious | fraud
+
+  riskAssessment RiskAssessment?
+  case           Case?
+
+  createdAt DateTime @default(now())
+
+  @@index([customerId])
+  @@index([merchantId])
+  @@index([timestamp])
+  @@index([transactionRef])
+}
+
+// ---------------------------------------------------------------------------
+// RISK ASSESSMENT (the output of the risk engine for one transaction)
+// ---------------------------------------------------------------------------
+model RiskAssessment {
+  id            String      @id @default(cuid())
+  transactionId String      @unique
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+
+  ruleScore      Float // 0-100, explainable weighted rule engine
+  mlAnomalyScore Float // 0-100, ML anomaly detector output
+  finalScore     Float // 0-100, blended final score
+  riskLevel      String // LOW | MEDIUM | HIGH | CRITICAL
+
+  recommendedAction String // approve | monitor | verify | manual_review | block
+  actionReason      String
+
+  modelVersion String   @default("v1")
+  createdAt    DateTime @default(now())
+
+  riskFactors RiskFactor[]
+  case        Case?
+
+  @@index([transactionId])
+  @@index([riskLevel])
+}
+
+// ---------------------------------------------------------------------------
+// RISK FACTORS (individual explainability line items behind a score)
+// ---------------------------------------------------------------------------
+model RiskFactor {
+  id               String         @id @default(cuid())
+  riskAssessmentId String
+  riskAssessment   RiskAssessment @relation(fields: [riskAssessmentId], references: [id])
+
+  category    String // amount_anomaly | velocity_risk | device_risk | location_risk | failed_attempt_risk | account_risk | behavioral_anomaly
+  description String
+  impact      Float // points contributed to the score
+  severity    String // info | low | medium | high
+
+  @@index([riskAssessmentId])
+}
+
+// ---------------------------------------------------------------------------
+// CASES (human review queue items)
+// ---------------------------------------------------------------------------
+model Case {
+  id               String   @id @default(cuid())
+  caseRef          String   @unique // e.g. CASE-3021
+  transactionId    String   @unique
+  riskAssessmentId String   @unique
+
+  transaction    Transaction    @relation(fields: [transactionId], references: [id])
+  riskAssessment RiskAssessment @relation(fields: [riskAssessmentId], references: [id])
+
+  status   String @default("open") // open | investigating | escalated | resolved | false_positive
+  priority String @default("medium") // low | medium | high | critical
+
+  assignedAnalystId String?
+  assignedAnalyst   User?   @relation("AssignedAnalyst", fields: [assignedAnalystId], references: [id])
+
+  aiSummary String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  resolvedAt DateTime?
+
+  notes     CaseNote[]
+  auditLogs AuditLog[]
+
+  @@index([status])
+  @@index([caseRef])
+}
+
+// ---------------------------------------------------------------------------
+// CASE NOTES (analyst free-text notes / investigation trail)
+// ---------------------------------------------------------------------------
+model CaseNote {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id])
+  authorId  String?
+  author    User?    @relation(fields: [authorId], references: [id])
+  authorName String  @default("Demo Analyst")
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
+}
+
+// ---------------------------------------------------------------------------
+// AUDIT LOG (immutable-style history of every action taken)
+// ---------------------------------------------------------------------------
+model AuditLog {
+  id         String   @id @default(cuid())
+  caseId     String?
+  case       Case?    @relation(fields: [caseId], references: [id])
+  analystId  String?
+  analyst    User?    @relation(fields: [analystId], references: [id])
+  analystName String  @default("Demo Analyst")
+
+  action           String // status_change | note_added | ai_analysis_run | escalated | approved | blocked | verification_requested | false_positive
+  previousStatus   String?
+  newStatus        String?
+  reason           String?  @db.Text
+  aiRecommendation String?  @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
+  @@index([createdAt])
+}
