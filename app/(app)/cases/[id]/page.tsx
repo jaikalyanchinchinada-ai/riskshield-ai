@@ -14,7 +14,8 @@ import type { RiskLevel } from "@/lib/risk-engine/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function CaseDetailPage({ params }: { params: { id: string } }) {
+export default async function CaseDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const caseRecord = await getCaseByRef(params.id);
   if (!caseRecord) notFound();
 

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTransactionByRef, getCustomerRecentTransactions } from "@/lib/database/transactions";
 import { apiError, handleApiError } from "@/lib/utils/api-error";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const transaction = await getTransactionByRef(params.id);
     if (!transaction) return apiError("Transaction not found", 404);

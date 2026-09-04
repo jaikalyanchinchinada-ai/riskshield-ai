@@ -13,7 +13,8 @@ import type { RiskLevel } from "@/lib/risk-engine/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function TransactionDetailPage({ params }: { params: { id: string } }) {
+export default async function TransactionDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const transaction = await getTransactionByRef(params.id);
   if (!transaction) notFound();
 

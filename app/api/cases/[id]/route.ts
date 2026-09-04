@@ -3,7 +3,8 @@ import { getCaseByRef, updateCaseStatus } from "@/lib/database/cases";
 import { caseUpdateSchema } from "@/lib/utils/validation";
 import { apiError, handleApiError } from "@/lib/utils/api-error";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const caseRecord = await getCaseByRef(params.id);
     if (!caseRecord) return apiError("Case not found", 404);
@@ -13,7 +14,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const body = await req.json().catch(() => ({}));
     const input = caseUpdateSchema.parse(body);

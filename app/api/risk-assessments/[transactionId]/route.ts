@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTransactionByRef } from "@/lib/database/transactions";
 import { apiError, handleApiError } from "@/lib/utils/api-error";
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: { transactionId: string } }
-) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ transactionId: string }> }) {
+  const params = await props.params;
   try {
     const transaction = await getTransactionByRef(params.transactionId);
     if (!transaction || !transaction.riskAssessment) {
