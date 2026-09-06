@@ -11,3 +11,6 @@ ml/training/data/*.csv
 prisma/dev.db
 coverage/
 *.tsbuildinfo
+
+.vercel
+.env*

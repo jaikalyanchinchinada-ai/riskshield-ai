@@ -20,8 +20,9 @@ export async function middleware(request: NextRequest) {
 
   const isPublicPage = PUBLIC_PAGES.includes(pathname);
   const isAuthApi = pathname.startsWith("/api/auth");
+  const isAdminSetup = pathname === "/api/admin/setup";
 
-  if (isPublicPage || isAuthApi) {
+ if (isPublicPage || isAuthApi || isAdminSetup) {
     return NextResponse.next();
   }
 
