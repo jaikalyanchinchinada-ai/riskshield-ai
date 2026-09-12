@@ -10,6 +10,7 @@ RUN apt-get update -qq \
 WORKDIR /app
 
 COPY package*.json ./
+COPY prisma ./prisma
 RUN npm install
 
 COPY ml/requirements.txt ./ml/requirements.txt
