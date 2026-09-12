@@ -31,6 +31,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const rawDbUrl = process.env.DATABASE_URL;
+  const diagnostics = {
+    databaseUrlPresent: !!rawDbUrl,
+    databaseUrlLength: rawDbUrl ? rawDbUrl.length : 0,
+    databaseUrlStartsWith: rawDbUrl ? rawDbUrl.slice(0, 12) : null,
+  };
+
+  if (!rawDbUrl) {
+    return NextResponse.json(
+      { error: "DATABASE_URL is not visible to this running function at all.", diagnostics },
+      { status: 500 }
+    );
+  }
+
   try {
     const migrationsDir = path.join(process.cwd(), "prisma", "migrations");
     if (!fs.existsSync(migrationsDir)) {
@@ -71,10 +85,11 @@ export async function GET(req: NextRequest) {
       success: true,
       message: "Database schema is set up. You can now sign up / log in.",
       migrations: applied,
+      diagnostics,
     });
   } catch (err) {
     return NextResponse.json(
-      { error: "Setup failed", details: err instanceof Error ? err.message : String(err) },
+      { error: "Setup failed", details: err instanceof Error ? err.message : String(err), diagnostics },
       { status: 500 }
     );
   }

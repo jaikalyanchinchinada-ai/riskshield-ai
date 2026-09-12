@@ -26,4 +26,4 @@ RUN python3 ml/training/generate_dataset.py && python3 ml/training/train_model.p
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run seed && npm start"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npm start -- -p ${PORT:-3000}"]
